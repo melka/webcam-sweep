@@ -31,11 +31,23 @@
           <div class="field-body">
             <div class="field">
               <div class="control">
-                <input class="input is-small" v-model="camera.ip" v-validate="'required|ip'" name="IP" type="text" placeholder="192.168.0.X">
+                <input class="input is-small" v-model="camera.ip" @change="writeRTSP" v-validate="'required|ip'" name="IP" type="text" placeholder="192.168.0.X">
               </div>
               <p class="help is-danger">
                 {{ errors.first('IP') }}
               </p>
+            </div>
+          </div>
+        </div>
+        <div class="field is-horizontal">
+          <div class="field-label is-small">
+            <label class="label">IP Address</label>
+          </div>
+          <div class="field-body">
+            <div class="field">
+              <div class="control">
+                <input class="input is-small" v-model="camera.rtsp" type="text" placeholder="rtsp stream address">
+              </div>
             </div>
           </div>
         </div>
@@ -81,6 +93,18 @@
                 <p class="help">
                   x : {{ this.camera.position.x }} / y : {{ this.camera.position.y }}
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="field is-horizontal">
+          <div class="field-label is-small">
+            <label class="label">Flip</label>
+          </div>
+          <div class="field-body">
+            <div class="field">
+              <div class="control">
+                <vb-switch :disabled="!this.camera.ready" type="success" size="large" v-model="camera.flip" @change="flipCamera"/>
               </div>
             </div>
           </div>
@@ -158,14 +182,18 @@
           model: 'Xiaomi Dafang',
           ready: false,
           running: false,
+          flip: false,
           speed: 800,
           sweep: 400,
+          ip: '192.168.2.2',
+          rtsp: 'rtsp://<user>:<pass>@192.168.2.2:8554/unicast',
+          user: 'user',
+          pass: 'pass',
           dir: 'l',
           models: [
             {id: 0, name: 'Xiaomi Dafang'},
             {id: 1, name: 'Heden IPCAM'}
           ],
-          ip: '192.168.1.76',
           position: {
             x: 0,
             y: 0
@@ -179,6 +207,7 @@
     },
     methods: {
       startAnimation () {
+        this.camera.dir = 'l'
         if (this.camera.ready) {
           this.moveCamera(this.camera.dir, this.camera.sweep)
         }
@@ -245,6 +274,29 @@
         }).catch(function (error) {
           console.log(error)
           vm.camera.ready = true
+        })
+      },
+      writeRTSP () {
+        this.camera.rtsp = 'rtsp://' + this.camera.ip + ':8554/unicast'
+      },
+      flipCamera () {
+        var command = ''
+        var vm = this
+        switch (vm.camera.model) {
+          case 'Xiaomi Dafang':
+            command = 'http://' + this.camera.user + ':' + this.camera.pass + '@' + this.camera.ip + ':5050/cgi-bin/action.cgi'
+            break
+          default:
+            break
+        }
+        var cmd = vm.camera.flip === true ? 'flip-on' : 'flip-off'
+        axios.post(command, querystring.stringify({
+          cmd: cmd
+        })).then(function (response) {
+          vm.camera.ready = true
+        }).catch(function (error) {
+          console.log(error)
+          vm.camera.ready = false
         })
       }
     }
